@@ -23,16 +23,29 @@ def login():
 @app.route("/success.html", methods=["POST", "GET"])
 def addFeedback():
     if request.method == "POST":
-        feedback = request.form["feedback"]
-        dbHandler.insertFeedback(feedback)
-        # Retrieve all feedback after insert
+        feedback_text = request.form["feedback"]
+        dbHandler.insertFeedback(feedback_text)
+
+        # Get all feedback from DB
         all_feedback = dbHandler.listFeedback()
-        # Pass to template safely
-        return render_template("success.html", state=True, value="Back", feedback=all_feedback)
-    else:
+
+        # Pass it to the template
+        return render_template(
+            "success.html",
+            value="User",
+            state=True,
+            feedback=all_feedback
+        )
+
+    else:  # GET request
         all_feedback = dbHandler.listFeedback()
-        # For GET requests, pass feedback to template
-        return render_template("success.html", value="User", feedback=all_feedback, state=False)
+        return render_template(
+            "success.html",
+            value="User",
+            state=False,
+            feedback=all_feedback
+        )
+
 
 
 
