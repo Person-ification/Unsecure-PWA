@@ -12,6 +12,13 @@ app = Flask(__name__)
 # Enable CORS to allow cross-origin requests (needed for CSRF demo in Codespaces)
 CORS(app)
 
+@app.route("/", methods=["GET", "POST"])
+def login():
+    msg = request.args.get("msg")
+    if msg:
+        # Escape any HTML characters
+        msg = html.escape(msg)
+    return render_template("index.html", msg=msg)
 
 @app.route("/success.html", methods=["POST", "GET", "PUT", "PATCH", "DELETE"])
 def addFeedback():
