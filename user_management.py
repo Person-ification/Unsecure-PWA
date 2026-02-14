@@ -3,6 +3,7 @@ import time
 import html
 import random
 import hmac
+import bleach
 
 
 def insertUser(username, password, DoB):
@@ -50,13 +51,16 @@ def insertFeedback(feedback):
     con = sql.connect("database_files/database.db")
     cur = con.cursor()
 
+    clean_feedback = bleach.clean(feedback)  # strips dangerous HTML/JS
+
     cur.execute(
         "INSERT INTO feedback (feedback) VALUES (?)",
-        (feedback,),
+        (clean_feedback,),
     )
 
     con.commit()
     con.close()
+
 
 
 
