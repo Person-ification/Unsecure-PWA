@@ -2,6 +2,7 @@ import sqlite3 as sql
 import time
 import html
 import random
+import hmac
 
 
 def insertUser(username, password, DoB):
@@ -19,13 +20,19 @@ def retrieveUsers(username, password):
     con = sql.connect("database_files/database.db")
     cur = con.cursor()
 
-    cur.execute(
-        "SELECT * FROM users WHERE username = ? AND password = ?",
-        (username, password),
-    )
+    # Fetch user data by username only
+    cur.execute("SELECT password FROM users WHERE username = ?", (username,))
+    row = cur.fetchone()
 
-    user = cur.fetchone()
+    # Default: no match
+    valid = False
 
+    if row:
+        stored_password = row[0]
+        # Use constant-time comparison
+        valid = hmac.compare_digest(stored_password, password)
+
+    # Update visitor log (keep it for educational purposes)
     with open("visitor_log.txt", "r") as file:
         number = int(file.read().strip())
         number += 1
@@ -33,11 +40,9 @@ def retrieveUsers(username, password):
     with open("visitor_log.txt", "w") as file:
         file.write(str(number))
 
-    time.sleep(0.085)
-
     con.close()
 
-    return user is not None
+    return valid
 
 
 
