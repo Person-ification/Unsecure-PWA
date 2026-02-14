@@ -24,8 +24,9 @@ def addFeedback():
         dbHandler.listFeedback()
         return render_template("/success.html", state=True, value="Back")
     else:
-        dbHandler.listFeedback()
-        return render_template("/success.html", state=True, value="Back")
+        feedback = dbHandler.listFeedback()
+        return render_template("/success.html", value=username, feedback=feedback, state=isLoggedIn)
+
 
 
 @app.route("/signup.html", methods=["POST", "GET", "PUT", "PATCH", "DELETE"])
