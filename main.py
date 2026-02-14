@@ -65,6 +65,10 @@ def home():
             return render_template("/index.html")
     else:
         return render_template("/index.html")
+@app.after_request
+def add_security_headers(response):
+    response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self'; object-src 'none';"
+    return response
 
 
 if __name__ == "__main__":
