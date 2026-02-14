@@ -71,9 +71,9 @@ Other Sandbox options:
 ### Deployment
 
 ```bash
-git clone https://github.com/TempeHS/The_Unsecure_PWA.git
+git clone https://github.com/Person-ificaation/The_Unsecure_PWA.git
 CD The_Unsecure_PWA
-python main.py
+python3 main.py
 ```
 
 Once deployed, the app can be accessed on either:
