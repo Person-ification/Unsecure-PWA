@@ -1,5 +1,6 @@
 import sqlite3 as sql
 import time
+import html
 import random
 
 
@@ -18,7 +19,6 @@ def retrieveUsers(username, password):
     con = sql.connect("database_files/database.db")
     cur = con.cursor()
 
-    # Secure parameterised query
     cur.execute(
         "SELECT * FROM users WHERE username = ? AND password = ?",
         (username, password),
@@ -26,7 +26,6 @@ def retrieveUsers(username, password):
 
     user = cur.fetchone()
 
-    # Log visitor count securely
     with open("visitor_log.txt", "r") as file:
         number = int(file.read().strip())
         number += 1
@@ -34,7 +33,6 @@ def retrieveUsers(username, password):
     with open("visitor_log.txt", "w") as file:
         file.write(str(number))
 
-    # Maintain consistent response time (reduce timing attack signal)
     time.sleep(0.085)
 
     con.close()
@@ -47,7 +45,6 @@ def insertFeedback(feedback):
     con = sql.connect("database_files/database.db")
     cur = con.cursor()
 
-    # Parameterised query prevents SQL injection
     cur.execute(
         "INSERT INTO feedback (feedback) VALUES (?)",
         (feedback,),
@@ -63,9 +60,9 @@ def listFeedback():
     cur = con.cursor()
     data = cur.execute("SELECT * FROM feedback").fetchall()
     con.close()
-    f = open("templates/partials/success_feedback.html", "w")
-    for row in data:
-        f.write("<p>\n")
-        f.write(f"{row[1]}\n")
-        f.write("</p>\n")
-    f.close()
+
+    with open("templates/partials/success_feedback.html", "w") as f:
+        for row in data:
+            f.write("<p>\n")
+            f.write(html.escape(row[1]) + "\n")
+            f.write("</p>\n")
