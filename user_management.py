@@ -60,9 +60,4 @@ def listFeedback():
     cur = con.cursor()
     data = cur.execute("SELECT * FROM feedback").fetchall()
     con.close()
-
-    with open("templates/partials/success_feedback.html", "w") as f:
-        for row in data:
-            f.write("<p>\n")
-            f.write(html.escape(row[1]) + "\n")
-            f.write("</p>\n")
+    return data  # Return raw data
