@@ -4,9 +4,7 @@ from flask import request
 from flask import redirect
 from flask_cors import CORS
 import user_management as dbHandler
-
-# Code snippet for logging a message
-# app.logger.critical("message")
+from flask import session
 
 app = Flask(__name__)
 # Enable CORS to allow cross-origin requests (needed for CSRF demo in Codespaces)
