@@ -5,6 +5,7 @@ from flask import redirect
 from flask_cors import CORS
 import user_management as dbHandler
 from flask import session
+import html
 
 app = Flask(__name__)
 # Enable CORS to allow cross-origin requests (needed for CSRF demo in Codespaces)
