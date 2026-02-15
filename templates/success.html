@@ -4,34 +4,28 @@
 <h1>Welcome {{ value }}!</h1>
 
 <form action="/success.html" method="post" class="box">
+  <!-- SECURE: CSRF Token -->
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
   <div class="input__wrapper">
-    <input
-      style="height:100px; vertical-align:top"
-      type="text"
-      name="feedback"
-      id="feedback"
-      placeholder="Enter your feedback here"
-      class="input__field"
-      required
-    />
+    <textarea name="feedback" placeholder="Enter your feedback here" style="width:100%; height:100px;" required></textarea>
   </div>
   <div class="input__wrapper">
-    <input type="submit" class="btn" value="Submit Feedback" />
+    <input type="submit" value="Submit Feedback" />
   </div>
 </form>
 
 <hr/>
-<br/>
-
-<h2>Others' Feedback</h2>
-<div>
+<h2>User Feedback</h2>
+<ul>
   {% if feedback %}
     {% for row in feedback %}
-      <p>{{ row[1] }}</p>
+      <!-- SECURE: No 'safe' filter. Script tags will be displayed as text, not executed. -->
+      <li>{{ row['feedback'] }}</li>
     {% endfor %}
   {% else %}
     <p>No feedback yet.</p>
   {% endif %}
-</div>
+</ul>
 
 {% endblock %}
