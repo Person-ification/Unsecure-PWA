@@ -1,9 +1,8 @@
 import sqlite3
 import os
-import pyotp  # Library for Google Authenticator logic
+import pyotp 
 from werkzeug.security import generate_password_hash, check_password_hash
 
-# Database setup
 DB_FOLDER = 'database_files'
 DB_PATH = os.path.join(DB_FOLDER, 'database.db')
 
@@ -16,13 +15,12 @@ def get_db():
 
 def init_db():
     conn = get_db()
-    # Updated table: Stores 'mfa_secret' instead of email codes
+
     conn.execute('''
         CREATE TABLE IF NOT EXISTS users (
             username TEXT PRIMARY KEY, 
             password TEXT, 
             dateOfBirth TEXT,
-            email TEXT,
             mfa_secret TEXT
         )
     ''')
@@ -30,7 +28,6 @@ def init_db():
     conn.commit()
     conn.close()
 
-# --- SECURE USER FUNCTIONS ---
 
 def register_user(username, password, dob, email):
     """
@@ -40,11 +37,8 @@ def register_user(username, password, dob, email):
     conn = get_db()
     cur = conn.cursor()
     
-    # SECURE: Password Hashing
     hashed_password = generate_password_hash(password)
-    
-    # SECURE: Generate a random Base32 secret for TOTP
-    # This secret is shared between the server and the Google Authenticator app
+  
     mfa_secret = pyotp.random_base32()
     
     try:
@@ -73,7 +67,6 @@ def retrieveUsers(username, password):
             return True
     return False
 
-# --- TOTP FUNCTIONS ---
 
 def verify_totp(username, input_code):
     """
@@ -89,7 +82,6 @@ def verify_totp(username, input_code):
         secret = result['mfa_secret']
         totp = pyotp.TOTP(secret)
         
-        # Verify the code (allows for slight time skew)
         return totp.verify(input_code)
             
     return False
