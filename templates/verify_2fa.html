@@ -1,0 +1,26 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="login-container">
+    <h2>Two-Factor Authentication</h2>
+    <p>Open your Authenticator app and enter the 6-digit code.</p>
+
+    {% if msg %}
+        <p style="color: red;">{{ msg }}</p>
+    {% endif %}
+
+    <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        
+        <label for="otp_code">6-Digit Code:</label>
+        <input type="text" id="otp_code" name="otp_code" 
+               pattern="[0-9]{6}" maxlength="6" 
+               placeholder="123456" required autocomplete="off">
+        
+        <button type="submit">Verify</button>
+    </form>
+    
+    <br>
+    <a href="{{ url_for('logout') }}">Cancel</a>
+</div>
+{% endblock %}
