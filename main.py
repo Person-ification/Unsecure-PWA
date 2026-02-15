@@ -13,13 +13,19 @@ dbHandler.init_db()
 
 # --- SECURITY HELPERS ---
 
+# Ensure every session has a CSRF token
 @app.before_request
 def csrf_protect():
+    if '_csrf_token' not in session:
+        session['_csrf_token'] = secrets.token_hex(16)
+
+    # Only check CSRF on POST requests
     if request.method == "POST":
         token = session.get('_csrf_token')
         if not token or token != request.form.get('csrf_token'):
             abort(403)
 
+# Jinja function to insert token in forms
 def generate_csrf_token():
     if '_csrf_token' not in session:
         session['_csrf_token'] = secrets.token_hex(16)
@@ -27,12 +33,19 @@ def generate_csrf_token():
 
 app.jinja_env.globals['csrf_token'] = generate_csrf_token
 
+# Security headers for all responses
 @app.after_request
 def add_security_headers(response):
     response.headers['X-Frame-Options'] = 'SAMEORIGIN'
     response.headers['X-Content-Type-Options'] = 'nosniff'
-    response.headers['Content-Security-Policy'] = "default-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; object-src 'none'; img-src 'self' data:;"
+    response.headers['Content-Security-Policy'] = (
+        "default-src 'self' 'unsafe-inline'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "object-src 'none'; "
+        "img-src 'self' data:;"
+    )
     return response
+
 
 # --- ROUTES ---
 
