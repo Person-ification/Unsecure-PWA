@@ -11,24 +11,27 @@ app.secret_key = secrets.token_hex(16)
 
 dbHandler.init_db()
 
-# --- SECURITY HELPERS ---
+# --- CSRF & SECURITY HELPERS ---
 
-# Ensure every session has a CSRF token
+# Ensure CSRF token exists for every session
+@app.before_request
+def ensure_csrf_token():
+    if '_csrf_token' not in session:
+        session['_csrf_token'] = secrets.token_hex(16)
+
+# Validate CSRF token on POST requests
 @app.before_request
 def csrf_protect():
-    if '_csrf_token' not in session:
-        session['_csrf_token'] = secrets.token_hex(16)
-
-    # Only check CSRF on POST requests
     if request.method == "POST":
         token = session.get('_csrf_token')
-        if not token or token != request.form.get('csrf_token'):
+        form_token = request.form.get('csrf_token')
+        if not token or token != form_token:
+            print("Session CSRF:", token)
+            print("Form CSRF:", form_token)
             abort(403)
 
-# Jinja function to insert token in forms
+# Jinja helper to include CSRF token in forms
 def generate_csrf_token():
-    if '_csrf_token' not in session:
-        session['_csrf_token'] = secrets.token_hex(16)
     return session['_csrf_token']
 
 app.jinja_env.globals['csrf_token'] = generate_csrf_token
@@ -45,7 +48,6 @@ def add_security_headers(response):
         "img-src 'self' data:;"
     )
     return response
-
 
 # --- ROUTES ---
 
@@ -93,27 +95,25 @@ def signup():
         username = request.form["username"]
         password = request.form["password"]
         dob = request.form["dob"]
-        email = request.form["email"]
-        
-        # Create user and get their Secret Key
-        success, secret = dbHandler.register_user(username, password, dob, email)
-        
+
+        # Register user without email
+        success, secret = dbHandler.register_user(username, password, dob, email=None)
+
         if success:
-            # Generate QR Code for Google Authenticator
+            # Generate TOTP URI for Google Authenticator
             totp_uri = pyotp.totp.TOTP(secret).provisioning_uri(name=username, issuer_name="SecurePWA")
-            
-            # Create Image
+
+            # Create QR code
             img = qrcode.make(totp_uri)
             buf = io.BytesIO()
             img.save(buf)
             buf.seek(0)
             img_base64 = base64.b64encode(buf.getvalue()).decode('ascii')
-            
-            # Show the QR code setup page
+
             return render_template("setup_2fa.html", qr_code=img_base64, secret=secret)
         else:
             return render_template("signup.html", msg="Username already exists")
-        
+
     return render_template("signup.html")
 
 @app.route("/success.html", methods=["GET", "POST"])
