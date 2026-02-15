@@ -1,6 +1,10 @@
 from flask import Flask, render_template, request, redirect, url_for, session, abort
 import user_management as dbHandler
 import secrets
+import pyotp
+import qrcode
+import io
+import base64
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
@@ -27,17 +31,10 @@ app.jinja_env.globals['csrf_token'] = generate_csrf_token
 def add_security_headers(response):
     response.headers['X-Frame-Options'] = 'SAMEORIGIN'
     response.headers['X-Content-Type-Options'] = 'nosniff'
-    response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self'; object-src 'none';"
+    response.headers['Content-Security-Policy'] = "default-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; object-src 'none'; img-src 'self' data:;"
     return response
 
 # --- ROUTES ---
-
-@app.before_request
-def handle_redirects():
-    if request.method == "GET" and request.args.get("url"):
-        target = request.args.get("url")
-        if target.startswith('/') and not target.startswith('//'):
-            return redirect(target)
 
 @app.route("/", methods=["GET", "POST"])
 @app.route("/index.html", methods=["GET", "POST"])
@@ -46,24 +43,20 @@ def index():
         username = request.form["username"]
         password = request.form["password"]
         
-        # Step 1: Verify Username and Password
+        # Step 1: Password Check
         if dbHandler.retrieveUsers(username, password):
-            # Generate OTP and "send" email
-            dbHandler.set_otp(username)
-            
-            # Store username temporarily - NOT fully logged in yet
+            # Store username temporarily
             session['pre_2fa_user'] = username
-            
-            return redirect(url_for('verify_otp'))
+            return redirect(url_for('verify_2fa'))
         else:
             return render_template("index.html", msg="Invalid Credentials")
             
     msg = request.args.get("msg", "")
     return render_template("index.html", msg=msg)
 
-@app.route("/verify_otp", methods=["GET", "POST"])
-def verify_otp():
-    # Ensure user has passed the password stage
+@app.route("/verify-2fa", methods=["GET", "POST"])
+def verify_2fa():
+    # Ensure user has passed password stage
     if 'pre_2fa_user' not in session:
         return redirect(url_for('index'))
     
@@ -71,16 +64,15 @@ def verify_otp():
         username = session['pre_2fa_user']
         code = request.form["otp_code"]
         
-        # Step 2: Verify OTP
-        if dbHandler.verify_otp(username, code):
-            # Success - promote to full login
+        # Step 2: Google Authenticator Check
+        if dbHandler.verify_totp(username, code):
             session['user'] = username
-            session.pop('pre_2fa_user', None) # Remove temp session
+            session.pop('pre_2fa_user', None)
             return redirect(url_for('success'))
         else:
-            return render_template("verify_otp.html", msg="Invalid or Expired Code")
+            return render_template("verify_2fa.html", msg="Invalid Code")
 
-    return render_template("verify_otp.html")
+    return render_template("verify_2fa.html")
 
 @app.route("/signup.html", methods=["GET", "POST"])
 def signup():
@@ -88,10 +80,26 @@ def signup():
         username = request.form["username"]
         password = request.form["password"]
         dob = request.form["dob"]
-        email = request.form["email"] # Get email from form
+        email = request.form["email"]
         
-        dbHandler.insertUser(username, password, dob, email)
-        return redirect(url_for('index', msg="Registration Successful"))
+        # Create user and get their Secret Key
+        success, secret = dbHandler.register_user(username, password, dob, email)
+        
+        if success:
+            # Generate QR Code for Google Authenticator
+            totp_uri = pyotp.totp.TOTP(secret).provisioning_uri(name=username, issuer_name="SecurePWA")
+            
+            # Create Image
+            img = qrcode.make(totp_uri)
+            buf = io.BytesIO()
+            img.save(buf)
+            buf.seek(0)
+            img_base64 = base64.b64encode(buf.getvalue()).decode('ascii')
+            
+            # Show the QR code setup page
+            return render_template("setup_2fa.html", qr_code=img_base64, secret=secret)
+        else:
+            return render_template("signup.html", msg="Username already exists")
         
     return render_template("signup.html")
 
