@@ -9,16 +9,27 @@ import base64
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
 
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,   
+    SESSION_COOKIE_SAMESITE='Strict', 
+    SESSION_COOKIE_SECURE=False    
+)
+
 dbHandler.init_db()
 
 @app.before_request
 def ensure_csrf_token():
+    """Ensure a CSRF token exists for every session."""
     if '_csrf_token' not in session:
         session['_csrf_token'] = secrets.token_hex(16)
-
+@app.after_request
+def remove_server_header(response):
+    response.headers.pop('Server', None)
+    return response
 
 @app.before_request
 def csrf_protect():
+    """Check POST requests for valid CSRF token."""
     if request.method == "POST":
         token = session.get('_csrf_token')
         form_token = request.form.get('csrf_token')
@@ -27,24 +38,29 @@ def csrf_protect():
             print("Form CSRF:", form_token)
             abort(403)
 
-
 def generate_csrf_token():
     return session['_csrf_token']
 
 app.jinja_env.globals['csrf_token'] = generate_csrf_token
 
 @app.after_request
-def add_security_headers(response):
+def set_security_headers(response):
+    response.headers.pop('Server', None)
+
+    response.headers['Content-Security-Policy'] = (
+        "default-src 'self'; "
+        "script-src 'self'; "
+        "style-src 'self'; "
+        "img-src 'self' data:; "
+        "object-src 'none'; "
+        "base-uri 'self'; "
+        "form-action 'self'; "
+        "frame-ancestors 'self';"
+    )
+
     response.headers['X-Frame-Options'] = 'SAMEORIGIN'
     response.headers['X-Content-Type-Options'] = 'nosniff'
-    response.headers['Content-Security-Policy'] = (
-        "default-src 'self' 'unsafe-inline'; "
-        "script-src 'self' 'unsafe-inline'; "
-        "object-src 'none'; "
-        "img-src 'self' data:;"
-    )
     return response
-
 
 @app.route("/", methods=["GET", "POST"])
 @app.route("/index.html", methods=["GET", "POST"])
@@ -52,29 +68,25 @@ def index():
     if request.method == "POST":
         username = request.form["username"]
         password = request.form["password"]
-        
-  
-        if dbHandler.retrieveUsers(username, password):
 
+        if dbHandler.retrieveUsers(username, password):
             session['pre_2fa_user'] = username
             return redirect(url_for('verify_2fa'))
         else:
             return render_template("index.html", msg="Invalid Credentials")
-            
+
     msg = request.args.get("msg", "")
     return render_template("index.html", msg=msg)
 
 @app.route("/verify-2fa", methods=["GET", "POST"])
 def verify_2fa():
-
     if 'pre_2fa_user' not in session:
         return redirect(url_for('index'))
-    
+
     if request.method == "POST":
         username = session['pre_2fa_user']
         code = request.form["otp_code"]
-        
-   
+
         if dbHandler.verify_totp(username, code):
             session['user'] = username
             session.pop('pre_2fa_user', None)
@@ -94,10 +106,10 @@ def signup():
         success, secret = dbHandler.register_user(username, password, dob, email=None)
 
         if success:
- 
-            totp_uri = pyotp.totp.TOTP(secret).provisioning_uri(name=username, issuer_name="SecurePWA")
+            totp_uri = pyotp.totp.TOTP(secret).provisioning_uri(
+                name=username, issuer_name="SecurePWA"
+            )
 
-       
             img = qrcode.make(totp_uri)
             buf = io.BytesIO()
             img.save(buf)
@@ -118,7 +130,7 @@ def success():
     if request.method == "POST":
         feedback_text = request.form["feedback"]
         dbHandler.insertFeedback(feedback_text)
-    
+
     all_feedback = dbHandler.listFeedback()
     return render_template("success.html", value=session['user'], state=True, feedback=all_feedback)
 
