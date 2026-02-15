@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Verify Login</title>
+    <!-- Assuming you have a stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Two-Factor Authentication</h1>
+        <p>Please enter the 6-digit code sent to your email.</p>
+        
+        {% if msg %}
+            <p style="color: red;">{{ msg }}</p>
+        {% endif %}
+
+        <form method="POST" action="{{ url_for('verify_otp') }}">
+            <!-- SECURE: CSRF Token -->
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
+            <label for="otp_code">Verification Code:</label>
+            <input type="text" id="otp_code" name="otp_code" required pattern="[0-9]{6}" title="6 digit code">
+            
+            <button type="submit">Verify</button>
+        </form>
+        
+        <br>
+        <a href="{{ url_for('logout') }}">Cancel</a>
+    </div>
+</body>
+</html>
