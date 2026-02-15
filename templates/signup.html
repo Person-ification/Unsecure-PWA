@@ -2,7 +2,6 @@
 {% block content %}
 <h1>Signup Form</h1>
 <form action="/signup.html" method="POST" class="box">
-    <!-- CSRF Token -->
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 
     <div class="input__wrapper">
