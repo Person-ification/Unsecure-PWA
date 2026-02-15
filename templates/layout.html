@@ -6,30 +6,25 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <meta name="theme-color" content="#14E6DD">
     
-    <title>The Unsecure PWA</title>
+    <title>The Secure PWA 😎</title>
     
-    <!-- PWA Manifest and Icons -->
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='images/favicon.png') }}">
     
-    <!-- CSS -->
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>  
     <nav>
-        <!-- Corrected Path and used url_for -->
         <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="The unsecure website logo." style="max-height: 50px;">
-        <h1>The Unsecure PWA</h1>
+        <h1>The Secure PWA 😎</h1>
         
         <ul class="topnav">
             <li><a href="{{ url_for('index') }}">Home</a></li>
             
             {% if session.get('user') %}
-                <!-- Show these links only when logged in -->
                 <li><a href="{{ url_for('success') }}">Success</a></li>
                 <li><a href="{{ url_for('logout') }}">Logout</a></li>
             {% else %}
-                <!-- Show these links when logged out -->
                 <li><a href="{{ url_for('signup') }}">Signup</a></li>
             {% endif %}
         </ul>
@@ -40,21 +35,14 @@
             <em>This progressive web app has been written specifically for students studying the 'Secure Software Architecture' unit. The application has been written with intentional vulnerabilities that students are to identify and implement solutions. Users should not use this as a template or enter any real data when interacting with the application.</em>
         </div>
         
-        <!-- ✅ CRITICAL FIX: This block is now defined exactly ONCE -->
         <div class="content">
             {% block content %}{% endblock %}
         </div>
     </main>
 
-    <!-- Scripts -->
     <script src="{{ url_for('static', filename='js/serviceWorker.js') }}"></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     
-    <!-- 
-         🔒 SECURITY NOTE: 
-         I removed the link to 'getfreebootstrap.ru'. 
-         In a secure application, never include scripts from untrusted external domains 
-         (Supply Chain Attack risk).
     -->
 </body>
 </html>
