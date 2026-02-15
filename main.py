@@ -11,15 +11,12 @@ app.secret_key = secrets.token_hex(16)
 
 dbHandler.init_db()
 
-# --- CSRF & SECURITY HELPERS ---
-
-# Ensure CSRF token exists for every session
 @app.before_request
 def ensure_csrf_token():
     if '_csrf_token' not in session:
         session['_csrf_token'] = secrets.token_hex(16)
 
-# Validate CSRF token on POST requests
+
 @app.before_request
 def csrf_protect():
     if request.method == "POST":
@@ -30,13 +27,12 @@ def csrf_protect():
             print("Form CSRF:", form_token)
             abort(403)
 
-# Jinja helper to include CSRF token in forms
+
 def generate_csrf_token():
     return session['_csrf_token']
 
 app.jinja_env.globals['csrf_token'] = generate_csrf_token
 
-# Security headers for all responses
 @app.after_request
 def add_security_headers(response):
     response.headers['X-Frame-Options'] = 'SAMEORIGIN'
@@ -49,7 +45,6 @@ def add_security_headers(response):
     )
     return response
 
-# --- ROUTES ---
 
 @app.route("/", methods=["GET", "POST"])
 @app.route("/index.html", methods=["GET", "POST"])
@@ -58,9 +53,9 @@ def index():
         username = request.form["username"]
         password = request.form["password"]
         
-        # Step 1: Password Check
+  
         if dbHandler.retrieveUsers(username, password):
-            # Store username temporarily
+
             session['pre_2fa_user'] = username
             return redirect(url_for('verify_2fa'))
         else:
@@ -71,7 +66,7 @@ def index():
 
 @app.route("/verify-2fa", methods=["GET", "POST"])
 def verify_2fa():
-    # Ensure user has passed password stage
+
     if 'pre_2fa_user' not in session:
         return redirect(url_for('index'))
     
@@ -79,7 +74,7 @@ def verify_2fa():
         username = session['pre_2fa_user']
         code = request.form["otp_code"]
         
-        # Step 2: Google Authenticator Check
+   
         if dbHandler.verify_totp(username, code):
             session['user'] = username
             session.pop('pre_2fa_user', None)
@@ -96,14 +91,13 @@ def signup():
         password = request.form["password"]
         dob = request.form["dob"]
 
-        # Register user without email
         success, secret = dbHandler.register_user(username, password, dob, email=None)
 
         if success:
-            # Generate TOTP URI for Google Authenticator
+ 
             totp_uri = pyotp.totp.TOTP(secret).provisioning_uri(name=username, issuer_name="SecurePWA")
 
-            # Create QR code
+       
             img = qrcode.make(totp_uri)
             buf = io.BytesIO()
             img.save(buf)
