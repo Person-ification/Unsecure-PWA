@@ -3,12 +3,10 @@
 <h1>Login</h1>
 
 {% if msg %}
-    <!-- SECURE: No 'safe' filter. HTML is auto-escaped. -->
     <div style="color: red;">{{ msg }}</div>
 {% endif %}
 
 <form action="/" method="post" class="box">
-  <!-- SECURE: CSRF Token -->
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 
   <div class="input__wrapper">
