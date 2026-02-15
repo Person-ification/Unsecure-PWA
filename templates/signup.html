@@ -2,7 +2,7 @@
 {% block content %}
 <h1>Signup Form</h1>
 <form action="/signup.html" method="POST" class="box">
-    <!-- SECURE: CSRF Token -->
+    <!-- CSRF Token -->
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 
     <div class="input__wrapper">
@@ -12,7 +12,7 @@
         <input type="password" name="password" placeholder="Password" required>
     </div>
     <div class="input__wrapper">
-        <input type="date" name="dob" required>
+        <input type="date" name="dob" placeholder="Date of Birth" required>
     </div>
     <div class="input__wrapper">
         <button type="submit">Submit</button>
