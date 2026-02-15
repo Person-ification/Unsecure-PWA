@@ -1,0 +1,17 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="login-container">
+    <h2>Setup 2FA</h2>
+    <p>Scan this QR code with Google Authenticator or Microsoft Authenticator.</p>
+    
+    <div style="background: white; padding: 20px; display: inline-block; margin: 20px;">
+        <img src="data:image/png;base64,{{ qr_code }}" alt="Scan this QR Code">
+    </div>
+
+    <p><strong>Secret Key (Manual Entry):</strong> {{ secret }}</p>
+    
+    <p>Once scanned, click below to login.</p>
+    <a href="{{ url_for('index') }}" class="button">Go to Login</a>
+</div>
+{% endblock %}
