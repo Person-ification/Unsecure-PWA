@@ -1,7 +1,6 @@
 import sqlite3
 import os
-import secrets
-import time
+import pyotp  # Library for Google Authenticator logic
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # Database setup
@@ -17,38 +16,46 @@ def get_db():
 
 def init_db():
     conn = get_db()
-    # Updated: Added email, otp_code, and otp_expiry
+    # Updated table: Stores 'mfa_secret' instead of email codes
     conn.execute('''
         CREATE TABLE IF NOT EXISTS users (
             username TEXT PRIMARY KEY, 
             password TEXT, 
             dateOfBirth TEXT,
             email TEXT,
-            otp_code TEXT,
-            otp_expiry REAL
+            mfa_secret TEXT
         )
     ''')
     conn.execute('CREATE TABLE IF NOT EXISTS feedback (id INTEGER PRIMARY KEY, feedback TEXT)')
     conn.commit()
     conn.close()
 
-# --- SECURE FUNCTIONS ---
+# --- SECURE USER FUNCTIONS ---
 
-def insertUser(username, password, dob, email):
+def register_user(username, password, dob, email):
+    """
+    Creates a user and generates a unique MFA secret for Google Authenticator.
+    Returns: (Success_Boolean, Secret_String)
+    """
     conn = get_db()
     cur = conn.cursor()
     
+    # SECURE: Password Hashing
     hashed_password = generate_password_hash(password)
     
+    # SECURE: Generate a random Base32 secret for TOTP
+    # This secret is shared between the server and the Google Authenticator app
+    mfa_secret = pyotp.random_base32()
+    
     try:
-        # Added email to query
         cur.execute(
-            "INSERT INTO users (username, password, dateOfBirth, email) VALUES (?, ?, ?, ?)", 
-            (username, hashed_password, dob, email)
+            "INSERT INTO users (username, password, dateOfBirth, email, mfa_secret) VALUES (?, ?, ?, ?, ?)", 
+            (username, hashed_password, dob, email, mfa_secret)
         )
         conn.commit()
+        return True, mfa_secret
     except sqlite3.IntegrityError:
-        print("User already exists")
+        return False, None
     finally:
         conn.close()
 
@@ -62,54 +69,28 @@ def retrieveUsers(username, password):
     conn.close()
 
     if user:
-        stored_hash = user['password']
-        if check_password_hash(stored_hash, password):
+        if check_password_hash(user['password'], password):
             return True
     return False
 
-# --- 2FA FUNCTIONS ---
+# --- TOTP FUNCTIONS ---
 
-def set_otp(username):
-    """Generates a secure 6-digit code and saves it to the DB."""
-    # SECURE: Use secrets module for cryptographically strong random numbers
-    otp = str(secrets.SystemRandom().randint(100000, 999999))
-    
-    # Set expiry for 5 minutes from now
-    expiry = time.time() + 300 
-    
+def verify_totp(username, input_code):
+    """
+    Verifies the 6-digit code from Google Authenticator.
+    """
     conn = get_db()
     cur = conn.cursor()
-    cur.execute("UPDATE users SET otp_code = ?, otp_expiry = ? WHERE username = ?", (otp, expiry, username))
-    
-    # Fetch email to 'send' the code
-    cur.execute("SELECT email FROM users WHERE username = ?", (username,))
+    cur.execute("SELECT mfa_secret FROM users WHERE username = ?", (username,))
     result = cur.fetchone()
-    conn.commit()
     conn.close()
     
-    if result:
-        # EDUCATIONAL NOTE: In a real app, use smtplib here.
-        # For this lab, we print to console to simulate sending.
-        print(f"📧 [SIMULATION] Email sent to {result['email']} with code: {otp}")
-        return True
-    return False
-
-def verify_otp(username, input_code):
-    """Checks if the OTP matches and hasn't expired."""
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("SELECT otp_code, otp_expiry FROM users WHERE username = ?", (username,))
-    user = cur.fetchone()
-    conn.close()
-    
-    if user:
-        stored_code = user['otp_code']
-        expiry = user['otp_expiry']
+    if result and result['mfa_secret']:
+        secret = result['mfa_secret']
+        totp = pyotp.TOTP(secret)
         
-        # Check if code matches AND time is valid
-        if stored_code == input_code and time.time() < expiry:
-            # Optional: Clear the code so it can't be used twice
-            return True
+        # Verify the code (allows for slight time skew)
+        return totp.verify(input_code)
             
     return False
 
