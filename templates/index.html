@@ -1,32 +1,24 @@
-{% extends 'layout.html' %} {% block content %}
+{% extends 'layout.html' %} 
+{% block content %}
 <h1>Login</h1>
+
+{% if msg %}
+    <!-- SECURE: No 'safe' filter. HTML is auto-escaped. -->
+    <div style="color: red;">{{ msg }}</div>
+{% endif %}
+
 <form action="/" method="post" class="box">
+  <!-- SECURE: CSRF Token -->
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
   <div class="input__wrapper">
-    <input
-      type="text"
-      name="username"
-      id="username"
-      placeholder="Username"
-      class="input__field"
-      required
-    />
+    <input type="text" name="username" placeholder="Username" required />
   </div>
   <div class="input__wrapper">
-    <input
-      type="password"
-      name="password"
-      id="password"
-      placeholder="Password"
-      class="input__field"
-      required
-    />
+    <input type="password" name="password" placeholder="Password" required />
   </div>
   <div class="input__wrapper">
-    <input type="submit" class="btn" value="Log In" />
+    <input type="submit" value="Log In" />
   </div>
 </form>
-<!-- User message -->
-{% if msg %}
-<div>{{ msg }}</div>
-{% endif %}
 {% endblock %}
