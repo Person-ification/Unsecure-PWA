@@ -4,7 +4,7 @@
 <h1>Welcome {{ value }}!</h1>
 
 <form action="/success.html" method="post" class="box">
-  <!-- SECURE: CSRF Token -->
+
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 
   <div class="input__wrapper">
@@ -20,7 +20,6 @@
 <ul>
   {% if feedback %}
     {% for row in feedback %}
-      <!-- SECURE: No 'safe' filter. Script tags will be displayed as text, not executed. -->
       <li>{{ row['feedback'] }}</li>
     {% endfor %}
   {% else %}
