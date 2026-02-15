@@ -1,8 +1,4 @@
-from flask import Flask
-from flask import render_template
-from flask import request
-from flask import redirect
-from flask import url_for
+from flask import Flask, render_template, request, redirect, url_for
 from flask_cors import CORS
 import user_management as dbHandler
 import html
@@ -10,52 +6,62 @@ import html
 app = Flask(__name__)
 CORS(app)
 
-# --- ROUTES ---
+# -------------------------------------------------------------------------
+# ROUTES
+# -------------------------------------------------------------------------
 
 @app.route("/", methods=["GET", "POST"])
 @app.route("/index.html", methods=["GET", "POST"])
 def index():
-    # 1. Handle Open Redirect Vulnerability (if implemented in URL)
+    # 1. FLAW: Open Redirect (Invalid Forwarding)
+    # This is required for your layout.html navigation to work!
+    # It takes the '?url=' parameter and redirects the user there without validation.
     if request.method == "GET" and request.args.get("url"):
         url = request.args.get("url", "")
         return redirect(url, code=302)
 
-    # 2. Handle Login Logic (POST)
+    # 2. Login Logic (POST)
     if request.method == "POST":
         username = request.form["username"]
         password = request.form["password"]
         
-        # Check credentials against DB
+        # Check credentials (using the vulnerable DB handler)
         isLoggedIn = dbHandler.retrieveUsers(username, password)
         
         if isLoggedIn:
-            # Successful login: Load feedback/success page
+            # Login Success: Show feedback page
             all_feedback = dbHandler.listFeedback()
             return render_template("success.html", value=username, state=True, feedback=all_feedback)
         else:
-            # Failed login: Reload index with error message
+            # Login Failed: Reload login with error
             return render_template("index.html", msg="Invalid Credentials")
 
-    # 3. Handle Page Load (GET)
+    # 3. Page Load (GET)
     else:
+        # FLAW: XSS (Reflected) via 'msg' parameter
         msg = request.args.get("msg", "")
+        # Note: To fully demonstrate XSS, you might want to remove html.escape(msg) later,
+        # but for now, we leave it to keep the app running.
         if msg:
-            # Note: For the 'Unsecure' version, we will eventually remove html.escape
-            msg = html.escape(msg)
+            msg = html.escape(msg) 
         return render_template("index.html", msg=msg)
 
 
 @app.route("/signup.html", methods=["GET", "POST"])
 def signup():
+    # Handle the navigation redirect if present
+    if request.method == "GET" and request.args.get("url"):
+        return redirect(request.args.get("url"), code=302)
+
     if request.method == "POST":
         username = request.form["username"]
         password = request.form["password"]
         dob = request.form["dob"]
         
-        # Insert user into DB
+        # Save user (Vulnerable Plaintext Insert)
         dbHandler.insertUser(username, password, dob)
         
-        # Redirect to login page with success message
+        # Redirect to login
         return redirect(url_for('index', msg="Registration Successful"))
         
     return render_template("signup.html")
@@ -63,33 +69,26 @@ def signup():
 
 @app.route("/success.html", methods=["GET", "POST"])
 def success():
-    # This route handles adding feedback
+    # Handle the navigation redirect if present
+    if request.method == "GET" and request.args.get("url"):
+        return redirect(request.args.get("url"), code=302)
+
     if request.method == "POST":
+        # FLAW: CSRF (No token check)
         feedback_text = request.form["feedback"]
         dbHandler.insertFeedback(feedback_text)
         
-    # Always reload the feedback list
     all_feedback = dbHandler.listFeedback()
     
-    # Note: In a real app, we should check if the user is logged in here
-    return render_template(
-        "success.html",
-        value="User", 
-        state=True, 
-        feedback=all_feedback
-    )
+    # Note: State is hardcoded to True here as a simplification for the PWA demo
+    return render_template("success.html", value="User", state=True, feedback=all_feedback)
 
-# --- SECURITY HEADERS ---
-# Note: To make this an "Unsecure PWA" later, we will need to REMOVE this section.
-@app.after_request
-def add_security_headers(response):
-    response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline'; object-src 'none';"
-    return response
 
 if __name__ == "__main__":
-    # Initialize DB (Optional, ensures tables exist if you have an init function)
-    # dbHandler.init_db() 
+    # Initialize the database tables
+    dbHandler.init_db()
     
     app.config["TEMPLATES_AUTO_RELOAD"] = True
     app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
+    # FLAW: Debug mode enabled
     app.run(debug=True, host="0.0.0.0", port=5000)
